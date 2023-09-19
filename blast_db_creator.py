@@ -5,7 +5,7 @@ import mysql.connector as connector
 
 config = {
   "user": "marie",
-  "password": "", # Type in your password here
+  "password": "marie", # Type in your password here
 }
 
 db_name = "blast_results_fornicata" 
@@ -22,7 +22,7 @@ print("DB server version: ", conn.get_server_info())
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS organisms (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        species_identifier VARCHAR(66)
+        species_identifier VARCHAR(66) NOT NULL
     )
 """)
 
@@ -30,8 +30,8 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS genes (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        organism_id INT,
-        gene_identifier VARCHAR(36),
+        organism_id INT NOT NULL,
+        gene_identifier VARCHAR(36) NOT NULL,
         FOREIGN KEY (organism_id) REFERENCES organisms(id)
     )
 """)
@@ -41,18 +41,18 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS hits (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        gene_id INT,
-        sseqid VARCHAR(12),
-        pident FLOAT,
-        length INT,
-        matches INT,
-        gaps INT,
-        qstart INT,
-        qend INT,
-        sstart INT,
-        send INT,
-        evalue FLOAT,
-        bitscore FLOAT,
+        gene_id INT NOT NULL,
+        sseqid VARCHAR(12) NOT NULL,
+        pident FLOAT NOT NULL,
+        length INT NOT NULL,
+        matches INT NOT NULL,
+        gaps INT NOT NULL,
+        qstart INT NOT NULL,
+        qend INT NOT NULL,
+        sstart INT NOT NULL,
+        send INT NOT NULL,
+        evalue FLOAT NOT NULL,
+        bitscore FLOAT NOT NULL,
         FOREIGN KEY (gene_id) REFERENCES genes(id),
         INDEX (sseqid)
     )
@@ -62,8 +62,8 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS taxonomy (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        sseqid VARCHAR(12),
-        taxonomy TEXT,
+        sseqid VARCHAR(12) NOT NULL,
+        taxonomy TEXT NOT NULL,
         FOREIGN KEY (sseqid) REFERENCES hits(sseqid)
     )
 """)
