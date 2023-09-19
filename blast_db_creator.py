@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 import sys
+import argparse
 import mysql.connector as connector
 # from mysql.connector import errorcode
 
+"""def parse_arguments():
+    usage = "./blast_db_creator.py"
+    description = "A small bit of something that calls MySQL and prepares a database with four connected tables to store Blast results in an efficient way"
+    parser = argparse.ArgumentParser(usage, description=description)
+    parser.add_argument("-p", "--password", required=True, help="Provide password for your MySQL account")
+    return parser.parse_args()
+
+password = parse_arguments()
+print(password)"""
+
+password = input("Please type in your MySQL password here: ")
+
 config = {
   "user": "marie",
-  "password": "marie", # Type in your password here
+  "password": password
 }
 
 db_name = "blast_results_fornicata" 
