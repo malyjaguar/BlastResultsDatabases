@@ -7,8 +7,8 @@
 # which we will use to store laaaaaarge amount of data from blasting whole transcriptomes of dozens of species
 # The Martin Kolisko lab
 # Marie Pazoutova, https://github.com/malyjaguar
+
  
-import sys
 import mysql.connector as connector
 
 
