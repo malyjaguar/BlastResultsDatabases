@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
+#
+#
+### BLAST DATABASE CREATOR ###
+#
+# This little thingy prepares a MySQL database with four connected tables 
+# which we will use to store laaaaaarge amount of data from blasting whole transcriptomes of dozens of species
+# The Martin Kolisko lab
+# Marie Pazoutova, https://github.com/malyjaguar
+ 
 import sys
-import argparse
 import mysql.connector as connector
-# from mysql.connector import errorcode
 
-"""def parse_arguments():
-    usage = "./blast_db_creator.py"
-    description = "A small bit of something that calls MySQL and prepares a database with four connected tables to store Blast results in an efficient way"
-    parser = argparse.ArgumentParser(usage, description=description)
-    parser.add_argument("-p", "--password", required=True, help="Provide password for your MySQL account")
-    return parser.parse_args()
-
-password = parse_arguments()
-print(password)"""
 
 password = input("Please type in your MySQL password here: ")
 
@@ -23,6 +21,7 @@ config = {
 
 db_name = "blast_results_fornicata" 
 
+
 conn = connector.connect(**config)
 cursor = conn.cursor()
 cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
@@ -30,12 +29,12 @@ cursor.execute(f"CREATE DATABASE {db_name} DEFAULT CHARACTER SET 'utf8'")
 cursor.execute(f"USE {db_name}")
 print("DB server version: ", conn.get_server_info())
 
-
+   
 # Create table 1: organisms
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS organisms (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        species_identifier VARCHAR(66) NOT NULL
+        species_identifier VARCHAR(64) NOT NULL
     )
 """)
 
@@ -44,7 +43,7 @@ cursor.execute("""
     CREATE TABLE IF NOT EXISTS genes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         organism_id INT NOT NULL,
-        gene_identifier VARCHAR(36) NOT NULL,
+        gene_identifier VARCHAR(128) NOT NULL,
         FOREIGN KEY (organism_id) REFERENCES organisms(id)
     )
 """)
@@ -55,7 +54,7 @@ cursor.execute("""
     CREATE TABLE IF NOT EXISTS hits (
         id INT AUTO_INCREMENT PRIMARY KEY,
         gene_id INT NOT NULL,
-        sseqid VARCHAR(12) NOT NULL,
+        sseqid VARCHAR(16) NOT NULL,
         pident FLOAT NOT NULL,
         length INT NOT NULL,
         matches INT NOT NULL,
@@ -75,7 +74,7 @@ cursor.execute("""
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS taxonomy (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        sseqid VARCHAR(12) NOT NULL,
+        sseqid VARCHAR(16) NOT NULL,
         taxonomy TEXT NOT NULL,
         FOREIGN KEY (sseqid) REFERENCES hits(sseqid)
     )
