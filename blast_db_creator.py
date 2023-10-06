@@ -19,11 +19,16 @@ config = {
   "password": password
 }
 
+### THE DB_NAME HERE NEEDS TO BE CHANGED FOR EACH NEW PURPOSE ###
+# The database name could be alternatively given as an input argument, but I was lazy to
+# complicate the code. Deal with it. 
 db_name = "blast_results_fornicata" 
 
 
 conn = connector.connect(**config)
 cursor = conn.cursor()
+# WATCH OUT CAREFULLY as here we drop an already existing database.
+# Be very cautious with the following line!!
 cursor.execute(f"DROP DATABASE IF EXISTS {db_name}")
 cursor.execute(f"CREATE DATABASE {db_name} DEFAULT CHARACTER SET 'utf8'")
 cursor.execute(f"USE {db_name}")
@@ -34,7 +39,7 @@ print("DB server version: ", conn.get_server_info())
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS organisms (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        species_identifier VARCHAR(64) NOT NULL
+        species_identifier VARCHAR(64) NOT NULL UNIQUE
     )
 """)
 
@@ -44,12 +49,15 @@ cursor.execute("""
         id INT AUTO_INCREMENT PRIMARY KEY,
         organism_id INT NOT NULL,
         gene_identifier VARCHAR(128) NOT NULL,
-        FOREIGN KEY (organism_id) REFERENCES organisms(id)
+        FOREIGN KEY (organism_id) REFERENCES organisms(id),
+        UNIQUE KEY gene_in_organism (organism_id, gene_identifier)
     )
 """)
 
 # Create table 3: hits
-# TODO: if we are strict, the sseqid VARCHAR lenght can be reduced to 10
+# if we are strict, the sseqid VARCHAR lenght can be reduced to 10
+# TODO: here we could probably implement Martin's requirement to keep 
+# only one representant of possibly multiple gene_id <=> sseqid pairs
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS hits (
         id INT AUTO_INCREMENT PRIMARY KEY,
