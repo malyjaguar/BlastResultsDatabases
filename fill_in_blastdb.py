@@ -9,7 +9,7 @@ import mysql.connector as connector
 import pandas as pd 
 
 
-# first of all: define the necessary arguments 
+# first of all: the necessary arguments 
 
 def parse_arguments():
     usage = "./fill_in_blastdb.py"
@@ -33,6 +33,8 @@ config = {
 }
 
 args = parse_arguments()
+
+INSERT_BATCH_SIZE = 2048
 
 
 # defining functions for file handling
@@ -68,7 +70,9 @@ def parse_blast_table(path_to_file):
     blast_results = data.values.tolist()
     return blast_results
 
+
 ### ...aaand TADAAAA, here we go!
+
 
 if __name__ == "__main__":
   organism_name = args.name
@@ -82,37 +86,43 @@ if __name__ == "__main__":
   ### TABLE 1
   cursor.execute(f"INSERT INTO `organisms` (`species_identifier`) VALUES ('{organism_name}')")
   # that's it - just this :-)
-
-  ##### NOW we need to ask the db to give us ID number for this new organism_name
+  # TODO: do we want some print status to be sure whe inserted just fine?
   
   
   ### TABLE 2 
-  # FIRST, we have to transfer an organism_id from Table 1 that matches the transcriptome's species
-  cursor.execute("select id from organisms where species_identifier = 'acromantula' ")
-  organism_id = cursor.fetchone()[0] #the cursor.fetchone put the number we want in a tuple, that's why the [0] at the end
-  print(organism_id)
+  # first we have to transfer an organism_id from Table 1 that matches the transcriptome's species
+  # TODO: do we want to add some error checks here? 
+  cursor.execute(f"select id from organisms where species_identifier = '{organism_name}' ")
+  organism_id = cursor.fetchone()[0] #the cursor.fetchone() puts the number we want in a tuple, that's why the [0] at the end
+  print(f"Organism ID for species {organism_name} is {organism_id}")
+
   # SECOND, we open the transcriptome file and parse it. 
-  # We need to read every header line starting with > and use (insert) the string behind it
+  # We need to read every header line starting with > and use the string behind it
   # Yes, we could have written this code so that we only work with one input file
   # and take qseqid's from the blast results table
   # Yet, parsing the transcriptome headers will yeald to complete list of genes
   # in case we need to check those who had no hit at all in blast or whatever
   genes = parse_fasta()
   #print(genes[:6])
-  """
-  try:
-    cursor.executemany("INSERT INTO `genes` (`gene_identifier`) VALUES (%s)", genes)
-  except connector.Error as error:
-    print(f"Failed to insert record into MySQL table: {error}")
-  """
+
+  for gene in genes: 
+    insert_cnt = 0
+    # sql = "INSERT INTO `taxa` (`tax_id`, `name`) VALUES (%s, %s)"
+    # cursor.execute(sql, (tax_id, tax_name))
+    # insert_cnt += 1
+    if insert_cnt >= INSERT_BATCH_SIZE:
+      conn.commit()
+      insert_cnt = 0 
+    
+    conn.commit()
 
   ### TABLE 3
   # FIRST, we need to transfer the gene_ID from Table 2, matching it with qseqid from 
   # the input file given in -b argument
   # SECOND, we take the whole table from -b file and toss it in
   blast_table = parse_blast_table(args.blast_results)
-  #for line in blast_table:
-  #   print(line)
+  # for line in blast_table:
+  # print(line)
 
   ### TABLE 4 - Taxonomy  
   # I don't know yet
