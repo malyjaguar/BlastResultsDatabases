@@ -103,13 +103,14 @@ if __name__ == "__main__":
   # Yet, parsing the transcriptome headers will yeald to complete list of genes
   # in case we need to check those who had no hit at all in blast or whatever
   genes = parse_fasta()
-  #print(genes[:6])
+  # print(genes)
+
+  insert_cnt = 0
 
   for gene in genes: 
-    insert_cnt = 0
-    # sql = "INSERT INTO `taxa` (`tax_id`, `name`) VALUES (%s, %s)"
-    # cursor.execute(sql, (tax_id, tax_name))
-    # insert_cnt += 1
+    sql = "INSERT INTO `genes` (`organism_id`, `gene_identifier`) VALUES (%s, %s)"
+    cursor.execute(sql, (organism_id, gene))
+    insert_cnt += 1
     if insert_cnt >= INSERT_BATCH_SIZE:
       conn.commit()
       insert_cnt = 0 
