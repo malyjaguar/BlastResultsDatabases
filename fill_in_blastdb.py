@@ -103,7 +103,6 @@ if __name__ == "__main__":
   # Yet, parsing the transcriptome headers will yeald to complete list of genes
   # in case we need to check those who had no hit at all in blast or whatever
   genes = parse_fasta()
-  # print(genes)
 
   insert_cnt = 0
 
