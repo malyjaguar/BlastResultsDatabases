@@ -67,7 +67,7 @@ def parse_fasta():
 def parse_blast_table(path_to_file):
     names = ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
     data = pd.read_csv(path_to_file, sep = "\t", names = names)     
-    blast_results = data.values.tolist()
+    blast_results = data.to_dict(orient='records')
     return blast_results
 
 
@@ -121,9 +121,14 @@ if __name__ == "__main__":
   # FIRST, we need to transfer the gene_ID from Table 2, matching it with qseqid from 
   # the input file given in -b argument
   # SECOND, we take the whole table from -b file and toss it in
-  blast_table = parse_blast_table(args.blast_results)
-  # for line in blast_table:
-  # print(line)
+  blast_table = parse_blast_table(args.blast_results)    
+  for line in blast_table:
+    # print(line)
+    qseqid = line['qseqid']
+    cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
+    gene_id = cursor.fetchone()[0] 
+    print(f"Gene ID for gene {qseqid} is {gene_id}")
+     
 
   ### TABLE 4 - Taxonomy  
   # I don't know yet
