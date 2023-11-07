@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 import mysql.connector as connector
 import pandas as pd 
+from pprint import pprint
 
 
 # first of all: the necessary arguments 
@@ -66,8 +67,16 @@ def parse_fasta():
 
 def parse_blast_table(path_to_file):
     names = ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
-    data = pd.read_csv(path_to_file, sep = "\t", names = names)     
-    blast_results = data.to_dict(orient='records')
+    with open(path_to_file) as f:
+       data = []
+
+       for line in f:
+          splitted = [l.strip() for l in line.split("\t")]
+          data.append(dict([[names[i], splitted[i]] for i, j in enumerate(names)]))
+
+    print(data)
+    exit()
+
     return blast_results
 
 
@@ -119,14 +128,31 @@ if __name__ == "__main__":
   ### TABLE 3
   # FIRST, we need to transfer the gene_ID from Table 2, matching it with qseqid from 
   # the input file given in -b argument
+
+  gene_ID_dict = {}
+  cursor.execute("select id, gene_identifier from genes")
+  table_2 = cursor.fetchall()
+  for iterablestuff in table_2:
+    gene_id = iterablestuff[0]
+    gene_name = iterablestuff[1] 
+    gene_ID_dict[gene_name] = gene_id
+
+  """for gene in genes: 
+     if gene in gene_ID_dict:
+        print(f"gene_ID for gene {gene} is {gene_ID_dict.get(gene)}")
+     else:
+        print(f"Something bad happened and gene {gene} is missing from our dictionary")"""
+       
+
   # SECOND, we take the whole table from -b file and toss it in
   blast_table = parse_blast_table(args.blast_results)    
-  for line in blast_table:
-    # print(line)
-    qseqid = line['qseqid']
-    cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
-    gene_id = cursor.fetchone()[0] 
-    print(f"Gene ID for gene {qseqid} is {gene_id}")
+  for item in blast_table:
+    qseqid = str(item['qseqid']).strip()
+    print(item)
+    
+    # cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
+    # gene_id = cursor.fetchone()[0] 
+    # print(f"Gene ID for gene {qseqid} is {gene_id}")
      
 
   ### TABLE 4 - Taxonomy  
