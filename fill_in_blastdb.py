@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 #
 #
+# all you need is in the README ;)
+# The Martin Kolisko lab
+# https://github.com/malyjaguar with help of the great https://github.com/Seraff
 
 
 import argparse
 from pathlib import Path
 import mysql.connector as connector
-import pandas as pd 
 from pprint import pprint
 
 
 # first of all: the necessary arguments 
+
 
 def parse_arguments():
     usage = "./fill_in_blastdb.py"
@@ -24,6 +27,7 @@ def parse_arguments():
 
 # defining some global variables
 
+
 password = input("Please type in your MySQL password here: ")
 
 config = {
@@ -33,18 +37,18 @@ config = {
   "database": "blast_results_fornicata" 
 }
 
-args = parse_arguments()
-
 INSERT_BATCH_SIZE = 2048
 
 
-# defining functions for file handling
+# defining functions for file handling etc.
+
 
 def validate_input_fasta(path_to_file):
   if Path(path_to_file).is_file():
       print(f"Transcriptome file taken from {path_to_file}")
   else:
       raise Exception (f"Transcriptome file {path_to_file} not valid.")
+
 
 def validate_input_blast(path_to_file):
   if Path(path_to_file).is_file():
@@ -53,11 +57,9 @@ def validate_input_blast(path_to_file):
       raise Exception (f"Blast results tsv file {path_to_file} not valid.")
 
 
-def parse_fasta():
+def parse_fasta(path_to_file):
   gene_headers = []
-  with open(args.transcriptome, "r", encoding="utf-8") as f:
-    # line = f.readline()
-    # print(line)
+  with open(path_to_file, "r", encoding="utf-8") as f:
     for line in f:
       if line.startswith('>') and line[1:].strip():
         genename = line[1:].strip()
@@ -66,21 +68,32 @@ def parse_fasta():
 
 
 def parse_blast_table(path_to_file):
-    names = ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
+    names = ['qseqid', 'sseqid', 'stitle', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'stitle', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+
     with open(path_to_file) as f:
        data = []
-
        for line in f:
           splitted = [l.strip() for l in line.split("\t")]
-          data.append(dict([[names[i], splitted[i]] for i, j in enumerate(names)]))
-
+          data.append(dict([[names[i], splitted[i]] for i, _ in enumerate(names)]))
     return data
+
+
+def retrieve_gene_IDs(cursor):
+  gene_ID_dict = {}
+  cursor.execute("select id, gene_identifier from genes")
+  table_2 = cursor.fetchall()
+  for iterablestuff in table_2:
+    gene_id = iterablestuff[0]
+    gene_name = iterablestuff[1] 
+    gene_ID_dict[gene_name] = gene_id
+  return gene_ID_dict
 
 
 ### ...aaand TADAAAA, here we go!
 
 
 if __name__ == "__main__":
+  args = parse_arguments()
   organism_name = args.name
   conn = connector.connect(**config)
   cursor = conn.cursor()
@@ -90,28 +103,28 @@ if __name__ == "__main__":
 
 
   ### TABLE 1
+
+
   cursor.execute(f"INSERT INTO `organisms` (`species_identifier`) VALUES ('{organism_name}')")
   # that's it - just this :-)
   # TODO: do we want some print status to be sure whe inserted just fine?
   
   
   ### TABLE 2 
-  # first we have to transfer an organism_id from Table 1 that matches the transcriptome's species
+  # before parsing the data, we have first to fetch an organism_id from Table 1
   # TODO: do we want to add some error checks here? 
+
+
   cursor.execute(f"select id from organisms where species_identifier = '{organism_name}' ")
   organism_id = cursor.fetchone()[0] #the cursor.fetchone() puts the number we want in a tuple, that's why the [0] at the end
   print(f"Organism ID for species {organism_name} is {organism_id}")
 
-  # SECOND, we open the transcriptome file and parse it. 
-  # We need to read every header line starting with > and use the string behind it
-  # Yes, we could have written this code so that we only work with one input file
-  # and take qseqid's from the blast results table
-  # Yet, parsing the transcriptome headers will yeald to complete list of genes
-  # in case we need to check those who had no hit at all in blast or whatever
-  genes = parse_fasta()
+
+  genes = parse_fasta(args.transcriptome)
 
   insert_cnt = 0
 
+  # to optimalize memory usage, we load data into the table in batches
   for gene in genes: 
     sql = "INSERT INTO `genes` (`organism_id`, `gene_identifier`) VALUES (%s, %s)"
     cursor.execute(sql, (organism_id, gene))
@@ -123,42 +136,53 @@ if __name__ == "__main__":
     conn.commit()
 
   ### TABLE 3
-  # FIRST, we need to transfer the gene_ID from Table 2, matching it with qseqid from 
-  # the input file given in -b argument
+  # again, we first need to transfer the gene_IDs from Table 2 
 
-  gene_ID_dict = {}
-  cursor.execute("select id, gene_identifier from genes")
-  table_2 = cursor.fetchall()
-  for iterablestuff in table_2:
-    gene_id = iterablestuff[0]
-    gene_name = iterablestuff[1] 
-    gene_ID_dict[gene_name] = gene_id
 
-  """for gene in genes: 
-     if gene in gene_ID_dict:
-        print(f"gene_ID for gene {gene} is {gene_ID_dict.get(gene)}")
-     else:
-        print(f"Something bad happened and gene {gene} is missing from our dictionary")"""
-       
-
-  # SECOND, we take the whole table from -b file and toss it in
+  gene_ID_dict = retrieve_gene_IDs(cursor)
+      
   blast_table = parse_blast_table(args.blast_results)    
   pprint(blast_table[:3])
 
+  for datarow in blast_table:
+    columns = ['qseqid', 'sseqid', 'stitle', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'stitle', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+    column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
+    values_string = ','.join(["%s " for _ in columns])
+    sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
     
-    # cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
-    # gene_id = cursor.fetchone()[0] 
-    # print(f"Gene ID for gene {qseqid} is {gene_id}")
+    print()
+    # ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
+    values = [datarow["qseqid"]] ### this one needs to be changed for gene_ID!!!
+    values.apend(datarow["sseqid"])
+    values.apend(datarow["taxonomy"])
+    values.apend(float(datarow["pident"]))
+    values.apend(int(datarow["length"]))
+    values.apend(int(datarow["matches"]))
+    values.apend(int(datarow["gaps"]))
+    values.apend(int(datarow["qstart"]))
+    values.apend(int(datarow["qend"]))
+    values.apend(int(datarow["sstart"]))
+    values.apend(int(datarow["send"]))
+    values.apend(float(datarow["evalue"]))
+    values.apend(float(datarow["bitscore"]))
+
+    cursor.execute(sql, values)
+    if insert_cnt >= INSERT_BATCH_SIZE:
+      conn.commit()
+      insert_cnt = 0 
+    
+    conn.commit()
+
+    
      
 
   ### TABLE 4 - Taxonomy  
-  # I don't know yet
+
 
   #Commit changes and close the connection
   conn.commit()
   conn.close()
 
 
-  # import ipdb; ipdb.set_trace()
 
 
