@@ -74,10 +74,7 @@ def parse_blast_table(path_to_file):
           splitted = [l.strip() for l in line.split("\t")]
           data.append(dict([[names[i], splitted[i]] for i, j in enumerate(names)]))
 
-    print(data)
-    exit()
-
-    return blast_results
+    return data
 
 
 ### ...aaand TADAAAA, here we go!
@@ -146,9 +143,8 @@ if __name__ == "__main__":
 
   # SECOND, we take the whole table from -b file and toss it in
   blast_table = parse_blast_table(args.blast_results)    
-  for item in blast_table:
-    qseqid = str(item['qseqid']).strip()
-    print(item)
+  pprint(blast_table[:3])
+
     
     # cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
     # gene_id = cursor.fetchone()[0] 
