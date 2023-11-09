@@ -28,7 +28,8 @@ def parse_arguments():
 # defining some global variables
 
 
-password = input("Please type in your MySQL password here: ")
+# password = input("Please type in your MySQL password here: ")
+password = "marie"
 
 config = {
   "auth_plugin":'mysql_native_password',
@@ -74,6 +75,7 @@ def parse_blast_table(path_to_file):
        data = []
        for line in f:
           splitted = [l.strip() for l in line.split("\t")]
+          # TODO: the following line could be rewritten with 'in range' so that it appends only selected columns, right?
           data.append(dict([[names[i], splitted[i]] for i, _ in enumerate(names)]))
     return data
 
@@ -142,45 +144,53 @@ if __name__ == "__main__":
   gene_ID_dict = retrieve_gene_IDs(cursor)
       
   blast_table = parse_blast_table(args.blast_results)    
-  pprint(blast_table[:3])
+  pprint(blast_table[:2])
 
   for datarow in blast_table:
-    columns = ['qseqid', 'sseqid', 'stitle', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'stitle', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+    columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
     column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
     values_string = ','.join(["%s " for _ in columns])
     sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
     
     print()
     # ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
-    values = [datarow["qseqid"]] ### this one needs to be changed for gene_ID!!!
-    values.apend(datarow["sseqid"])
-    values.apend(datarow["taxonomy"])
-    values.apend(float(datarow["pident"]))
-    values.apend(int(datarow["length"]))
-    values.apend(int(datarow["matches"]))
-    values.apend(int(datarow["gaps"]))
-    values.apend(int(datarow["qstart"]))
-    values.apend(int(datarow["qend"]))
-    values.apend(int(datarow["sstart"]))
-    values.apend(int(datarow["send"]))
-    values.apend(float(datarow["evalue"]))
-    values.apend(float(datarow["bitscore"]))
+    # cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
+    # gene_id = cursor.fetchone()[0] #the cursor.fetchone() puts the number we want in a tuple, that's why the [0] at the end
+    # print(f"Gene ID for gene {qseqid} is {gene_id}")
+
+    qseqid = datarow["qseqid"].strip()
+    gene_id = gene_ID_dict[qseqid]
+
+    # and a charming example of duplicated code is here!  
+    values = [gene_id] 
+    values.append(datarow["sseqid"])
+    values.append(float(datarow["pident"]))
+    values.append(int(datarow["length"]))
+    values.append(int(datarow["matches"]))
+    values.append(int(datarow["gaps"]))
+    values.append(int(datarow["qstart"]))
+    values.append(int(datarow["qend"]))
+    values.append(int(datarow["sstart"]))
+    values.append(int(datarow["send"]))
+    values.append(float(datarow["qcovhsp"]))
+    values.append(float(datarow["scovhsp"]))
+    values.append(float(datarow["evalue"]))
+    values.append(float(datarow["bitscore"]))
+  
+
 
     cursor.execute(sql, values)
     if insert_cnt >= INSERT_BATCH_SIZE:
       conn.commit()
-      insert_cnt = 0 
-    
-    conn.commit()
+      insert_cnt = 0  
 
-    
-     
+  conn.commit()
 
   ### TABLE 4 - Taxonomy  
 
 
   #Commit changes and close the connection
-  conn.commit()
+  
   conn.close()
 
 
