@@ -9,7 +9,7 @@
 import argparse
 from pathlib import Path
 import mysql.connector as connector
-from pprint import pprint
+# from pprint import pprint
 
 
 # first of all: the necessary arguments 
@@ -139,12 +139,13 @@ if __name__ == "__main__":
 
   ### TABLE 3
   # again, we first need to transfer the gene_IDs from Table 2 
+  # TODO: add a try - catch loop to save incomplete lines in a log file or something
 
 
   gene_ID_dict = retrieve_gene_IDs(cursor)
       
   blast_table = parse_blast_table(args.blast_results)    
-  pprint(blast_table[:2])
+  
 
   for datarow in blast_table:
     columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
@@ -152,12 +153,7 @@ if __name__ == "__main__":
     values_string = ','.join(["%s " for _ in columns])
     sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
     
-    print()
-    # ['qseqid', 'sseqid', 'taxonomy', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
-    # cursor.execute(f"select id from genes where gene_identifier = '{qseqid}' ")
-    # gene_id = cursor.fetchone()[0] #the cursor.fetchone() puts the number we want in a tuple, that's why the [0] at the end
-    # print(f"Gene ID for gene {qseqid} is {gene_id}")
-
+    
     qseqid = datarow["qseqid"].strip()
     gene_id = gene_ID_dict[qseqid]
 
@@ -178,19 +174,19 @@ if __name__ == "__main__":
     values.append(float(datarow["bitscore"]))
   
 
-
     cursor.execute(sql, values)
     if insert_cnt >= INSERT_BATCH_SIZE:
       conn.commit()
+      print("2048 hits inserted and committed")
       insert_cnt = 0  
 
   conn.commit()
 
   ### TABLE 4 - Taxonomy  
-
+  # TODO 
 
   #Commit changes and close the connection
-  
+ 
   conn.close()
 
 

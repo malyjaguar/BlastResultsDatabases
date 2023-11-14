@@ -71,6 +71,8 @@ cursor.execute("""
         qend INT NOT NULL,
         sstart INT NOT NULL,
         send INT NOT NULL,
+        qcovhsp FLOAT NOT NULL,
+        scovhsp FLOAT NOT NULL,
         evalue FLOAT NOT NULL,
         bitscore FLOAT NOT NULL,
         FOREIGN KEY (gene_id) REFERENCES genes(id),
@@ -95,3 +97,4 @@ conn.close()
 print("Database and tables created successfully!")
 
 
+  
