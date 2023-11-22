@@ -19,10 +19,7 @@ config = {
   "password": password
 }
 
-### THE DB_NAME HERE NEEDS TO BE CHANGED FOR EACH NEW PURPOSE ###
-# The database name could be alternatively given as an input argument, but I was lazy to
-# complicate the code. Deal with it. 
-db_name = "blast_results_fornicata" 
+db_name = input("Please type in the name of your database") 
 
 
 conn = connector.connect(**config)
