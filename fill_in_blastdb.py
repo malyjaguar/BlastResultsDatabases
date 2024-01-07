@@ -29,13 +29,13 @@ def parse_arguments():
 
 
 # password = input("Please type in your MySQL password here: ")
-password = "marie"
+password = "<Itypedmypasswordhere>"
 
 config = {
   "auth_plugin":'mysql_native_password',
   "user": "marie",
   "password": password,
-  "database": "blast_results_fornicata" 
+  "database": "<name_of_db_here>" 
 }
 
 INSERT_BATCH_SIZE = 2048
@@ -66,19 +66,7 @@ def parse_fasta(path_to_file):
         genename = line[1:].strip()
         gene_headers.append(genename)
     return gene_headers
-
-
-def parse_blast_table(path_to_file):
-    names = ['qseqid', 'sseqid', 'stitle', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'stitle', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
-
-    with open(path_to_file) as f:
-       data = []
-       for line in f:
-          splitted = [l.strip() for l in line.split("\t")]
-          # TODO: the following line could be rewritten with 'in range' so that it appends only selected columns, right?
-          data.append(dict([[names[i], splitted[i]] for i, _ in enumerate(names)]))
-    return data
-
+    
 
 def retrieve_gene_IDs(cursor):
   gene_ID_dict = {}
@@ -135,7 +123,7 @@ if __name__ == "__main__":
       conn.commit()
       insert_cnt = 0 
     
-    conn.commit()
+  conn.commit()
 
   ### TABLE 3
   # again, we first need to transfer the gene_IDs from Table 2 
@@ -144,41 +132,47 @@ if __name__ == "__main__":
 
   gene_ID_dict = retrieve_gene_IDs(cursor)
       
-  blast_table = parse_blast_table(args.blast_results)    
+
+  ### TOHLE TED POTREBUJE DODELAT!
   
+  with open(args.blast_results) as f:
+    for line in f:
+    # this is how our data look like: qseqid sseqid stitle pident length mismatch gapopen qstart qend sstart send stitle qcovhsp scovhsp evalue bitscore   
+      columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+      column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
+      values_string = ','.join(["%s " for _ in columns])  
+      sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
 
-  for datarow in blast_table:
-    columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
-    column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
-    values_string = ','.join(["%s " for _ in columns])
-    sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
+      blast_row = line.strip().split('\t')
+
+
+      # retrieving the gene IDs from dictionary that we prepared earlier
+      qseqid = blast_row[0].strip()
+      gene_id = gene_ID_dict[qseqid]
+      
+      # and a charming example of duplicated code is here!  
+      values = [gene_id] 
+      values.append(blast_row[1])
+      values.append(float(blast_row[3]))
+      values.append(int(blast_row[4]))
+      values.append(int(blast_row[5]))
+      values.append(int(blast_row[6]))
+      values.append(int(blast_row[7]))
+      values.append(int(blast_row[8]))
+      values.append(int(blast_row[9]))
+      values.append(int(blast_row[10]))
+      values.append(float(blast_row[12]))
+      values.append(float(blast_row[13]))
+      values.append(float(blast_row[14]))
+      values.append(float(blast_row[15]))
     
-    
-    qseqid = datarow["qseqid"].strip()
-    gene_id = gene_ID_dict[qseqid]
 
-    # and a charming example of duplicated code is here!  
-    values = [gene_id] 
-    values.append(datarow["sseqid"])
-    values.append(float(datarow["pident"]))
-    values.append(int(datarow["length"]))
-    values.append(int(datarow["matches"]))
-    values.append(int(datarow["gaps"]))
-    values.append(int(datarow["qstart"]))
-    values.append(int(datarow["qend"]))
-    values.append(int(datarow["sstart"]))
-    values.append(int(datarow["send"]))
-    values.append(float(datarow["qcovhsp"]))
-    values.append(float(datarow["scovhsp"]))
-    values.append(float(datarow["evalue"]))
-    values.append(float(datarow["bitscore"]))
-  
-
-    cursor.execute(sql, values)
-    if insert_cnt >= INSERT_BATCH_SIZE:
-      conn.commit()
-      print("2048 hits inserted and committed")
-      insert_cnt = 0  
+      cursor.execute(sql, values)
+      insert_cnt += 1
+      if insert_cnt >= INSERT_BATCH_SIZE:
+        conn.commit()
+        print("2048 hits inserted and committed")
+        insert_cnt = 0  
 
   conn.commit()
 
