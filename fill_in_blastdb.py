@@ -28,14 +28,15 @@ def parse_arguments():
 # defining some global variables
 
 
-# password = input("Please type in your MySQL password here: ")
-password = "<Itypedmypasswordhere>"
+password = input("Please type in your MySQL password here: ")
+# password = "<Itypedmypasswordhere>"
+database = input("Database name: ")
 
 config = {
   "auth_plugin":'mysql_native_password',
   "user": "marie",
   "password": password,
-  "database": "<name_of_db_here>" 
+  "database": database 
 }
 
 INSERT_BATCH_SIZE = 2048
@@ -137,6 +138,8 @@ if __name__ == "__main__":
   
   with open(args.blast_results) as f:
     for line in f:
+      print(line)
+      exit
     # this is how our data look like: qseqid sseqid stitle pident length mismatch gapopen qstart qend sstart send stitle qcovhsp scovhsp evalue bitscore   
       columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
       column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
