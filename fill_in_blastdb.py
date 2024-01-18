@@ -134,49 +134,49 @@ if __name__ == "__main__":
   gene_ID_dict = retrieve_gene_IDs(cursor)
 
 
-### TOHLE TED POTREBUJE DODELAT!
+  ### TOHLE TED POTREBUJE DODELAT!
 
-# CSV file path for loading to database
-csv_path = f"{args.blast_results}.for_mysql.csv"
+  # CSV file path for loading to database
+  csv_path = f"{args.blast_results}.for_mysql.csv"
 
-# Schema of blast file
-# -> this can be changed in future if the BLAST format changes
-blast_columns = ["gene_name", "sseqid", "qseqid", "pident", "length", "matches", "gaps", "qstart", "qend", "sstart", "send", "description", "qcovhsp", "scovhsp", "evalue", "bitscore"]
+  # Schema of blast file
+  # -> this can be changed in future if the BLAST format changes
+  blast_columns = ["gene_name", "sseqid", "qseqid", "pident", "length", "matches", "gaps", "qstart", "qend", "sstart", "send", "description", "qcovhsp", "scovhsp", "evalue", "bitscore"]
 
-# Schema of CSV file for MySQL LOAD DATA INFILE
-# -> this can be changed in future if MySQL schema changes
-csv_columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+  # Schema of CSV file for MySQL LOAD DATA INFILE
+  # -> this can be changed in future if MySQL schema changes
+  csv_columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
 
-BLAST_DELIMITER = "\t"
-CSV_DELIMITER = ","
+  BLAST_DELIMITER = "\t"
+  CSV_DELIMITER = ","
 
-# Reading blast line-by-line, converting every line to CSV line and writing to CSV file
-with open(args.blast_results) as f, open(csv_path, 'w') as out_f:
-  for line in f:
-    # For safety we are stripping the whole line and every value
-    blast_row = [e.strip() for e in line.strip().split(BLAST_DELIMITER)]
+  # Reading blast line-by-line, converting every line to CSV line and writing to CSV file
+  with open(args.blast_results) as f, open(csv_path, 'w') as out_f:
+    for line in f:
+      # For safety we are stripping the whole line and every value
+      blast_row = [e.strip() for e in line.strip().split(BLAST_DELIMITER)]
 
-    # Creating blast dictionary
-    blast_data = {}
-    for i, col_name in enumerate(blast_columns):
-        blast_data[col_name] = blast_row[i]
+      # Creating blast dictionary
+      blast_data = {}
+      for i, col_name in enumerate(blast_columns):
+          blast_data[col_name] = blast_row[i]
 
-    # Making a list with actual values for CSV
-    # -> If-else logic can be extended in future if we add some non-blast columns to MySQL schema
-    csv_data = []
-    for col_name in csv_columns:
-      if col_name == "gene_id":
-        gene_id = gene_ID_dict[blast_data["gene_name"]]
-        csv_data.append(gene_id)
-      else:
-        csv_data.append(blast_data[col_name])
+      # Making a list with actual values for CSV
+      # -> If-else logic can be extended in future if we add some non-blast columns to MySQL schema
+      csv_data = []
+      for col_name in csv_columns:
+        if col_name == "gene_id":
+          gene_id = gene_ID_dict[blast_data["gene_name"]]
+          csv_data.append(gene_id)
+        else:
+          csv_data.append(blast_data[col_name])
 
-    # Forming actual CSV line for writing to file
-    # Wrapping every value into quotes, MySQL will convert data types properly (i.e. "5" to 5 and "2.42" to 2.42)
-    csv_row = CSV_DELIMITER.join([f"\"{e}\"" for e in csv_data])
+      # Forming actual CSV line for writing to file
+      # Wrapping every value into quotes, MySQL will convert data types properly (i.e. "5" to 5 and "2.42" to 2.42)
+      csv_row = CSV_DELIMITER.join([f"\"{e}\"" for e in csv_data])
 
-    # Writing a line to CSV file
-    out_f.write(csv_row + "\n")
+      # Writing a line to CSV file
+      out_f.write(csv_row + "\n")
 
   # TODO: now we have a CSV file.
   # We can load it smth like this:
