@@ -12,7 +12,7 @@ import mysql.connector as connector
 # from pprint import pprint
 
 
-# first of all: the necessary arguments 
+# first of all: the necessary arguments
 
 
 def parse_arguments():
@@ -36,7 +36,7 @@ config = {
   "auth_plugin":'mysql_native_password',
   "user": "marie",
   "password": password,
-  "database": database 
+  "database": database
 }
 
 INSERT_BATCH_SIZE = 2048
@@ -67,7 +67,7 @@ def parse_fasta(path_to_file):
         genename = line[1:].strip()
         gene_headers.append(genename)
     return gene_headers
-    
+
 
 def retrieve_gene_IDs(cursor):
   gene_ID_dict = {}
@@ -75,7 +75,7 @@ def retrieve_gene_IDs(cursor):
   table_2 = cursor.fetchall()
   for iterablestuff in table_2:
     gene_id = iterablestuff[0]
-    gene_name = iterablestuff[1] 
+    gene_name = iterablestuff[1]
     gene_ID_dict[gene_name] = gene_id
   return gene_ID_dict
 
@@ -99,11 +99,11 @@ if __name__ == "__main__":
   cursor.execute(f"INSERT INTO `organisms` (`species_identifier`) VALUES ('{organism_name}')")
   # that's it - just this :-)
   # TODO: do we want some print status to be sure whe inserted just fine?
-  
-  
-  ### TABLE 2 
+
+
+  ### TABLE 2
   # before parsing the data, we have first to fetch an organism_id from Table 1
-  # TODO: do we want to add some error checks here? 
+  # TODO: do we want to add some error checks here?
 
 
   cursor.execute(f"select id from organisms where species_identifier = '{organism_name}' ")
@@ -116,74 +116,83 @@ if __name__ == "__main__":
   insert_cnt = 0
 
   # to optimalize memory usage, we load data into the table in batches
-  for gene in genes: 
+  for gene in genes:
     sql = "INSERT INTO `genes` (`organism_id`, `gene_identifier`) VALUES (%s, %s)"
     cursor.execute(sql, (organism_id, gene))
     insert_cnt += 1
     if insert_cnt >= INSERT_BATCH_SIZE:
       conn.commit()
-      insert_cnt = 0 
-    
+      insert_cnt = 0
+
   conn.commit()
 
   ### TABLE 3
-  # again, we first need to transfer the gene_IDs from Table 2 
+  # again, we first need to transfer the gene_IDs from Table 2
   # TODO: add a try - catch loop to save incomplete lines in a log file or something
 
 
   gene_ID_dict = retrieve_gene_IDs(cursor)
-      
-
-  ### TOHLE TED POTREBUJE DODELAT!
-  
-  with open(args.blast_results) as f:
-    for line in f:
-      print(line)
-      exit
-    # this is how our data look like: qseqid sseqid stitle pident length mismatch gapopen qstart qend sstart send stitle qcovhsp scovhsp evalue bitscore   
-      columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
-      column_string = ','.join([f'`{name}`' for name in columns]) # "`bla`, `blo`, `blu`"
-      values_string = ','.join(["%s " for _ in columns])  
-      sql = f"INSERT INTO `hits` ({column_string}) VALUES ({values_string})"
-
-      blast_row = line.strip().split('\t')
 
 
-      # retrieving the gene IDs from dictionary that we prepared earlier
-      qseqid = blast_row[0].strip()
-      gene_id = gene_ID_dict[qseqid]
-      
-      # and a charming example of duplicated code is here!  
-      values = [gene_id] 
-      values.append(blast_row[1])
-      values.append(float(blast_row[3]))
-      values.append(int(blast_row[4]))
-      values.append(int(blast_row[5]))
-      values.append(int(blast_row[6]))
-      values.append(int(blast_row[7]))
-      values.append(int(blast_row[8]))
-      values.append(int(blast_row[9]))
-      values.append(int(blast_row[10]))
-      values.append(float(blast_row[12]))
-      values.append(float(blast_row[13]))
-      values.append(float(blast_row[14]))
-      values.append(float(blast_row[15]))
-    
+### TOHLE TED POTREBUJE DODELAT!
 
-      cursor.execute(sql, values)
-      insert_cnt += 1
-      if insert_cnt >= INSERT_BATCH_SIZE:
-        conn.commit()
-        print("2048 hits inserted and committed")
-        insert_cnt = 0  
+# CSV file path for loading to database
+csv_path = f"{args.blast_results}.for_mysql.csv"
 
-  conn.commit()
+# Schema of blast file
+# -> this can be changed in future if the BLAST format changes
+blast_columns = ["gene_name", "sseqid", "qseqid", "pident", "length", "matches", "gaps", "qstart", "qend", "sstart", "send", "description", "qcovhsp", "scovhsp", "evalue", "bitscore"]
 
-  ### TABLE 4 - Taxonomy  
-  # TODO 
+# Schema of CSV file for MySQL LOAD DATA INFILE
+# -> this can be changed in future if MySQL schema changes
+csv_columns = ['gene_id', 'sseqid', 'pident', 'length', 'matches', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'qcovhsp', 'scovhsp', 'evalue', 'bitscore']
+
+BLAST_DELIMITER = "\t"
+CSV_DELIMITER = ","
+
+# Reading blast line-by-line, converting every line to CSV line and writing to CSV file
+with open(args.blast_results) as f, open(csv_path, 'w') as out_f:
+  for line in f:
+    # For safety we are stripping the whole line and every value
+    blast_row = [e.strip() for e in line.strip().split(BLAST_DELIMITER)]
+
+    # Creating blast dictionary
+    blast_data = {}
+    for i, col_name in enumerate(blast_columns):
+        blast_data[col_name] = blast_row[i]
+
+    # Making a list with actual values for CSV
+    # -> If-else logic can be extended in future if we add some non-blast columns to MySQL schema
+    csv_data = []
+    for col_name in csv_columns:
+      if col_name == "gene_id":
+        gene_id = gene_ID_dict[blast_data["gene_name"]]
+        csv_data.append(gene_id)
+      else:
+        csv_data.append(blast_data[col_name])
+
+    # Forming actual CSV line for writing to file
+    # Wrapping every value into quotes, MySQL will convert data types properly (i.e. "5" to 5 and "2.42" to 2.42)
+    csv_row = CSV_DELIMITER.join([f"\"{e}\"" for e in csv_data])
+
+    # Writing a line to CSV file
+    out_f.write(csv_row + "\n")
+
+  # TODO: now we have a CSV file.
+  # We can load it smth like this:
+  # LOAD DATA INFILE '{csv_path}'
+  # INTO TABLE `hits`
+  # FIELDS TERMINATED BY '{CSV_DELIMITER}'
+  # OPTIONALLY ENCLOSED BY '"'
+  # LINES TERMINATED BY '\n'
+  # ({ ', '.join(csv_columns) });
+
+
+  ### TABLE 4 - Taxonomy
+  # TODO
 
   #Commit changes and close the connection
- 
+
   conn.close()
 
 
